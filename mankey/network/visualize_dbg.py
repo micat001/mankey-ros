@@ -4,15 +4,19 @@ import torch
 import cv2
 import mankey.network.predict as predict
 import mankey.config.parameter as parameter
-from mankey.dataproc.supervised_keypoint_loader import SupervisedKeypointDatasetConfig, SupervisedKeypointDataset
+from mankey.dataproc.supervised_keypoint_loader import (
+    SupervisedKeypointDatasetConfig,
+    SupervisedKeypointDataset,
+)
 
 
 def visualize_entry_nostage(
-        entry_idx: int,
-        network: torch.nn.Module,
-        dataset: SupervisedKeypointDataset,
-        config: SupervisedKeypointDatasetConfig,
-        save_dir: str):
+    entry_idx: int,
+    network: torch.nn.Module,
+    dataset: SupervisedKeypointDataset,
+    config: SupervisedKeypointDatasetConfig,
+    save_dir: str,
+):
     # The raw input
     processed_entry = dataset.get_processed_entry(dataset.entry_list[entry_idx])
 
@@ -26,10 +30,12 @@ def visualize_entry_nostage(
 
     # Do forward
     raw_pred = network(stacked_rgbd)
-    prob_pred = raw_pred[:, 0:dataset.num_keypoints, :, :]
-    depthmap_pred = raw_pred[:, dataset.num_keypoints:, :, :]
+    prob_pred = raw_pred[:, 0 : dataset.num_keypoints, :, :]
+    depthmap_pred = raw_pred[:, dataset.num_keypoints :, :, :]
     heatmap = predict.heatmap_from_predict(prob_pred, dataset.num_keypoints)
-    coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(heatmap, dataset.num_keypoints)
+    coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(
+        heatmap, dataset.num_keypoints
+    )
     depth_pred = predict.depth_integration(heatmap, depthmap_pred)
 
     # To actual image coord
@@ -50,20 +56,33 @@ def visualize_entry_nostage(
 
     # Get the image
     from mankey.utils.imgproc import draw_image_keypoint, draw_visible_heatmap
-    keypoint_rgb_cv = draw_image_keypoint(processed_entry.cropped_rgb, keypointxy_depth_pred, processed_entry.keypoint_validity)
-    rgb_save_path = os.path.join(save_dir, 'image_%d_rgb.png' % entry_idx)
+
+    keypoint_rgb_cv = draw_image_keypoint(
+        processed_entry.cropped_rgb,
+        keypointxy_depth_pred,
+        processed_entry.keypoint_validity,
+    )
+    rgb_save_path = os.path.join(save_dir, "image_%d_rgb.png" % entry_idx)
     cv2.imwrite(rgb_save_path, keypoint_rgb_cv)
 
     # The depth error
-    depth_error_mm = np.abs(processed_entry.keypoint_xy_depth[2, :] - keypointxy_depth_pred[2, :])
+    depth_error_mm = np.abs(
+        processed_entry.keypoint_xy_depth[2, :] - keypointxy_depth_pred[2, :]
+    )
     max_depth_error = np.max(depth_error_mm)
-    print('Entry %d' % entry_idx)
-    print('The max depth error (mm) is ', max_depth_error)
+    print("Entry %d" % entry_idx)
+    print("The max depth error (mm) is ", max_depth_error)
 
     # The pixel error
-    pixel_error = np.sum(np.sqrt((processed_entry.keypoint_xy_depth[0:2, :] - keypointxy_depth_pred[0:2, :])**2), axis=0)
+    pixel_error = np.sum(
+        np.sqrt(
+            (processed_entry.keypoint_xy_depth[0:2, :] - keypointxy_depth_pred[0:2, :])
+            ** 2
+        ),
+        axis=0,
+    )
     max_pixel_error = np.max(pixel_error)
-    print('The max pixel error (pixel in 256x256 image) is ', max_pixel_error)
+    print("The max pixel error (pixel in 256x256 image) is ", max_pixel_error)
 
     # Save the depth map
     # from utils.imgproc import get_visible_depth
@@ -75,11 +94,12 @@ def visualize_entry_nostage(
 
 
 def visualize_entry_staged(
-        entry_idx: int,
-        network: torch.nn.Module,
-        dataset: SupervisedKeypointDataset,
-        config: SupervisedKeypointDatasetConfig,
-        save_dir: str):
+    entry_idx: int,
+    network: torch.nn.Module,
+    dataset: SupervisedKeypointDataset,
+    config: SupervisedKeypointDatasetConfig,
+    save_dir: str,
+):
     # The raw input
     processed_entry = dataset.get_processed_entry(dataset.entry_list[entry_idx])
 
@@ -95,10 +115,12 @@ def visualize_entry_staged(
     # Do forward
     raw_pred_all = network(stacked_rgbd)
     raw_pred = raw_pred_all[-1]
-    prob_pred = raw_pred[:, 0:dataset.num_keypoints, :, :]
-    depthmap_pred = raw_pred[:, dataset.num_keypoints:, :, :]
+    prob_pred = raw_pred[:, 0 : dataset.num_keypoints, :, :]
+    depthmap_pred = raw_pred[:, dataset.num_keypoints :, :, :]
     heatmap = predict.heatmap_from_predict(prob_pred, dataset.num_keypoints)
-    coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(heatmap, dataset.num_keypoints)
+    coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(
+        heatmap, dataset.num_keypoints
+    )
     depth_pred = predict.depth_integration(heatmap, depthmap_pred)
 
     # To actual image coord
@@ -119,17 +141,30 @@ def visualize_entry_staged(
 
     # Get the image
     from mankey.utils.imgproc import draw_image_keypoint, draw_visible_heatmap
-    keypoint_rgb_cv = draw_image_keypoint(processed_entry.cropped_rgb, keypointxy_depth_pred, processed_entry.keypoint_validity)
-    rgb_save_path = os.path.join(save_dir, 'image_%d_rgb.png' % entry_idx)
+
+    keypoint_rgb_cv = draw_image_keypoint(
+        processed_entry.cropped_rgb,
+        keypointxy_depth_pred,
+        processed_entry.keypoint_validity,
+    )
+    rgb_save_path = os.path.join(save_dir, "image_%d_rgb.png" % entry_idx)
     cv2.imwrite(rgb_save_path, keypoint_rgb_cv)
 
     # The depth error
-    depth_error_mm = np.abs(processed_entry.keypoint_xy_depth[2, :] - keypointxy_depth_pred[2, :])
+    depth_error_mm = np.abs(
+        processed_entry.keypoint_xy_depth[2, :] - keypointxy_depth_pred[2, :]
+    )
     max_depth_error = np.max(depth_error_mm)
-    print('Entry %d' % entry_idx)
-    print('The max depth error (mm) is ', max_depth_error)
+    print("Entry %d" % entry_idx)
+    print("The max depth error (mm) is ", max_depth_error)
 
     # The pixel error
-    pixel_error = np.sum(np.sqrt((processed_entry.keypoint_xy_depth[0:2, :] - keypointxy_depth_pred[0:2, :])**2), axis=0)
+    pixel_error = np.sum(
+        np.sqrt(
+            (processed_entry.keypoint_xy_depth[0:2, :] - keypointxy_depth_pred[0:2, :])
+            ** 2
+        ),
+        axis=0,
+    )
     max_pixel_error = np.max(pixel_error)
-    print('The max pixel error (pixel in 256x256 image) is ', max_pixel_error)
+    print("The max pixel error (pixel in 256x256 image) is ", max_pixel_error)

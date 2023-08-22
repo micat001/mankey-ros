@@ -11,6 +11,7 @@ class HourglassNetConfig(object):
     Note that only the final stage is able to produce 3d predictions
     All other layers are only 2d heatmap for supervision only
     """
+
     image_channels = 3
     num_stages = 2
     num_blocks = 4
@@ -27,20 +28,24 @@ class Bottleneck(nn.Module):
     """
     A customed bottlenet with expsansion 2
     """
+
     expansion = 2
 
-    def __init__(self,
-                 inplanes,  # type: int,
-                 planes,  # type: int,
-                 stride=1,
-                 downsample=None):
+    def __init__(
+        self,
+        inplanes,  # type: int,
+        planes,  # type: int,
+        stride=1,
+        downsample=None,
+    ):
         super(Bottleneck, self).__init__()
 
         self.bn1 = nn.BatchNorm2d(inplanes)
         self.conv1 = nn.Conv2d(inplanes, planes, kernel_size=1, bias=True)
         self.bn2 = nn.BatchNorm2d(planes)
-        self.conv2 = nn.Conv2d(planes, planes, kernel_size=3, stride=stride,
-                               padding=1, bias=True)
+        self.conv2 = nn.Conv2d(
+            planes, planes, kernel_size=3, stride=stride, padding=1, bias=True
+        )
         self.bn3 = nn.BatchNorm2d(planes)
         self.conv3 = nn.Conv2d(planes, planes * 2, kernel_size=1, bias=True)
         self.relu = nn.ReLU(inplace=True)
@@ -73,10 +78,12 @@ class HourglassModule(nn.Module):
     """
     The basic hourglass module used in hourglass network
     """
-    def __init__(self,
-                 num_blks,  # type: int
-                 planes,  # type: int
-                 depth,  # type: int
+
+    def __init__(
+        self,
+        num_blks,  # type: int
+        planes,  # type: int
+        depth,  # type: int
     ):
         super(HourglassModule, self).__init__()
         self._depth = depth
@@ -84,8 +91,8 @@ class HourglassModule(nn.Module):
 
     @staticmethod
     def _make_residual(
-            num_blks,  # type: int
-            planes,  # type: int
+        num_blks,  # type: int
+        planes,  # type: int
     ):
         layers = []
         for i in range(0, num_blks):
@@ -93,10 +100,10 @@ class HourglassModule(nn.Module):
         return nn.Sequential(*layers)
 
     def _make_hourglass(
-            self,
-            num_blks,  # type: int
-            planes,  # type: int
-            depth,  # type: int
+        self,
+        num_blks,  # type: int
+        planes,  # type: int
+        depth,  # type: int
     ):
         hg = []
         for i in range(depth):
@@ -109,15 +116,15 @@ class HourglassModule(nn.Module):
         return nn.ModuleList(hg)
 
     def _hour_glass_forward(self, n, x):
-        up1 = self._hg[n-1][0](x)
+        up1 = self._hg[n - 1][0](x)
         low1 = F.max_pool2d(x, 2, stride=2)
-        low1 = self._hg[n-1][1](low1)
+        low1 = self._hg[n - 1][1](low1)
 
         if n > 1:
-            low2 = self._hour_glass_forward(n-1, low1)
+            low2 = self._hour_glass_forward(n - 1, low1)
         else:
-            low2 = self._hg[n-1][3](low1)
-        low3 = self._hg[n-1][2](low2)
+            low2 = self._hg[n - 1][3](low1)
+        low3 = self._hg[n - 1][2](low2)
         up2 = F.interpolate(low3, scale_factor=2)
         out = up1 + up2
         return out
@@ -133,6 +140,7 @@ class HourglassNet(nn.Module):
     only in 2D. Only the final heatmap can be provided in 3d, either
     in the form of location map or volumetric map.
     """
+
     def __init__(self, config=HourglassNetConfig()):
         super(HourglassNet, self).__init__()
 
@@ -140,8 +148,14 @@ class HourglassNet(nn.Module):
         self.inplanes = 64
         self.num_feats = 128
         self.num_stacks = config.num_stages
-        self.conv1 = nn.Conv2d(config.image_channels, self.inplanes, kernel_size=7, stride=2, padding=3,
-                               bias=True)
+        self.conv1 = nn.Conv2d(
+            config.image_channels,
+            self.inplanes,
+            kernel_size=7,
+            stride=2,
+            padding=3,
+            bias=True,
+        )
         self.bn1 = nn.BatchNorm2d(self.inplanes)
         self.relu = nn.ReLU(inplace=True)
         self.maxpool = nn.MaxPool2d(2, stride=2)
@@ -159,11 +173,22 @@ class HourglassNet(nn.Module):
             res.append(self._make_residual(self.num_feats, config.num_blocks))
             fc.append(self._make_fc(ch, ch))
             if i is self.num_stacks - 1:
-                score.append(nn.Conv2d(ch, config.num_keypoints * config.depth_per_keypoint, kernel_size=1, bias=True))
+                score.append(
+                    nn.Conv2d(
+                        ch,
+                        config.num_keypoints * config.depth_per_keypoint,
+                        kernel_size=1,
+                        bias=True,
+                    )
+                )
             else:
-                score.append(nn.Conv2d(ch, config.num_keypoints, kernel_size=1, bias=True))
+                score.append(
+                    nn.Conv2d(ch, config.num_keypoints, kernel_size=1, bias=True)
+                )
                 fc_.append(nn.Conv2d(ch, ch, kernel_size=1, bias=True))
-                score_.append(nn.Conv2d(config.num_keypoints, ch, kernel_size=1, bias=True))
+                score_.append(
+                    nn.Conv2d(config.num_keypoints, ch, kernel_size=1, bias=True)
+                )
 
         # Collect them
         self.hg = nn.ModuleList(hg)
@@ -177,16 +202,21 @@ class HourglassNet(nn.Module):
         self._init_weight()
 
     def _make_residual(
-            self,
-            planes,  # type: int
-            blocks,  # type: int
-            stride=1
+        self,
+        planes,  # type: int
+        blocks,  # type: int
+        stride=1,
     ):
         downsample = None
         if stride != 1 or self.inplanes != planes * Bottleneck.expansion:
             downsample = nn.Sequential(
-                nn.Conv2d(self.inplanes, planes * Bottleneck.expansion,
-                          kernel_size=1, stride=stride, bias=True),
+                nn.Conv2d(
+                    self.inplanes,
+                    planes * Bottleneck.expansion,
+                    kernel_size=1,
+                    stride=stride,
+                    bias=True,
+                ),
             )
 
         layers = []
@@ -197,16 +227,17 @@ class HourglassNet(nn.Module):
         return nn.Sequential(*layers)
 
     def _make_fc(
-            self,
-            inplanes,  # type: int
-            outplanes,  # type: int
+        self,
+        inplanes,  # type: int
+        outplanes,  # type: int
     ):
         bn = nn.BatchNorm2d(inplanes)
         conv = nn.Conv2d(inplanes, outplanes, kernel_size=1, bias=True)
         return nn.Sequential(
-                conv,
-                bn,
-                self.relu,)
+            conv,
+            bn,
+            self.relu,
+        )
 
     def _init_weight(self):
         for m in self.modules():

@@ -3,12 +3,22 @@ import os
 import random
 import mankey.config.parameter as parameter
 from torch.utils.data import DataLoader
-from mankey.network.resnet_nostage import ResnetNoStageConfig, ResnetNoStage, init_from_modelzoo
+from mankey.network.resnet_nostage import (
+    ResnetNoStageConfig,
+    ResnetNoStage,
+    init_from_modelzoo,
+)
 from mankey.network.weighted_loss import weighted_l1_loss
 import mankey.network.predict as predict
 import mankey.network.visualize_dbg as visualize_dbg
-from mankey.dataproc.spartan_supervised_db import SpartanSupvervisedKeypointDBConfig, SpartanSupervisedKeypointDatabase
-from mankey.dataproc.supervised_keypoint_loader import SupervisedKeypointDatasetConfig, SupervisedKeypointDataset
+from mankey.dataproc.spartan_supervised_db import (
+    SpartanSupvervisedKeypointDBConfig,
+    SpartanSupervisedKeypointDatabase,
+)
+from mankey.dataproc.supervised_keypoint_loader import (
+    SupervisedKeypointDatasetConfig,
+    SupervisedKeypointDataset,
+)
 
 # This script is a 2d experiment to test the direct heatmap regression
 # Some global parameter
@@ -17,12 +27,14 @@ heatmap_loss_weight = 1.0
 n_epoch = 60
 
 
-def construct_dataset(is_train: bool) -> (torch.utils.data.Dataset, SupervisedKeypointDatasetConfig):
+def construct_dataset(
+    is_train: bool,
+) -> (torch.utils.data.Dataset, SupervisedKeypointDatasetConfig):
     # Construct the db
     db_config = SpartanSupvervisedKeypointDBConfig()
-    db_config.keypoint_yaml_name = 'shoe_6_keypoint_image.yaml'
-    db_config.pdc_data_root = '/home/wei/data/pdc'
-    db_config.config_file_path = '/home/wei/Coding/mankey/config/boot_logs.txt'
+    db_config.keypoint_yaml_name = "shoe_6_keypoint_image.yaml"
+    db_config.pdc_data_root = "/home/wei/data/pdc"
+    db_config.config_file_path = "/home/wei/Coding/mankey/config/boot_logs.txt"
     database = SpartanSupervisedKeypointDatabase(db_config)
 
     # Construct torch dataset
@@ -69,17 +81,23 @@ def visualize(network_path: str, save_dir: str):
     entry_idx.append(35)
     entry_idx.append(1126)
     for i in range(len(entry_idx)):
-        visualize_dbg.visualize_entry_nostage(entry_idx[i], network, dataset, config, save_dir)
+        visualize_dbg.visualize_entry_nostage(
+            entry_idx[i], network, dataset, config, save_dir
+        )
 
 
-def train(checkpoint_dir: str, start_from_ckpnt: str = '', save_epoch_offset: int = 0):
+def train(checkpoint_dir: str, start_from_ckpnt: str = "", save_epoch_offset: int = 0):
     # Construct the dataset
     dataset_train, train_config = construct_dataset(is_train=True)
     dataset_val, val_config = construct_dataset(is_train=False)
 
     # And the dataloader
-    loader_train = DataLoader(dataset=dataset_train, batch_size=16, shuffle=True, num_workers=4)
-    loader_val = DataLoader(dataset=dataset_val, batch_size=16, shuffle=False, num_workers=4)
+    loader_train = DataLoader(
+        dataset=dataset_train, batch_size=16, shuffle=True, num_workers=4
+    )
+    loader_val = DataLoader(
+        dataset=dataset_val, batch_size=16, shuffle=False, num_workers=4
+    )
 
     # Construct the regressor
     network, net_config = construct_network()
@@ -104,9 +122,9 @@ def train(checkpoint_dir: str, start_from_ckpnt: str = '', save_epoch_offset: in
     for epoch in range(n_epoch):
         # Save the network
         if epoch % 100 == 0 and epoch > 0:
-            file_name = 'checkpoint-%d.pth' % (epoch + save_epoch_offset)
+            file_name = "checkpoint-%d.pth" % (epoch + save_epoch_offset)
             checkpoint_path = os.path.join(checkpoint_dir, file_name)
-            print('Save the network at %s' % checkpoint_path)
+            print("Save the network at %s" % checkpoint_path)
             torch.save(network.state_dict(), checkpoint_path)
 
         # Prepare info for training
@@ -116,7 +134,7 @@ def train(checkpoint_dir: str, start_from_ckpnt: str = '', save_epoch_offset: in
         # The learning rate step
         scheduler.step()
         for param_group in optimizer.param_groups:
-            print('The learning rate is ', param_group['lr'])
+            print("The learning rate is ", param_group["lr"])
 
         # The training iteration over the dataset
         for idx, data in enumerate(loader_train):
@@ -135,7 +153,7 @@ def train(checkpoint_dir: str, start_from_ckpnt: str = '', save_epoch_offset: in
             # To predict
             optimizer.zero_grad()
             raw_pred = network(image)
-            prob_pred = raw_pred[:, 0:net_config.num_keypoints, :, :]
+            prob_pred = raw_pred[:, 0 : net_config.num_keypoints, :, :]
             _, _, heatmap_height, heatmap_width = prob_pred.shape
 
             # Compute loss
@@ -149,18 +167,32 @@ def train(checkpoint_dir: str, start_from_ckpnt: str = '', save_epoch_offset: in
             del loss
 
             # Do some pred and log
-            keypoint_xy_pred, _ = predict.heatmap2d_to_normalized_imgcoord_argmax(prob_pred)
-            xy_error = float(weighted_l1_loss(keypoint_xy_pred[:, :, 0:2], keypoint_xy_depth[:, :, 0:2], keypoint_weight[:, :, 0:2]).item())
+            keypoint_xy_pred, _ = predict.heatmap2d_to_normalized_imgcoord_argmax(
+                prob_pred
+            )
+            xy_error = float(
+                weighted_l1_loss(
+                    keypoint_xy_pred[:, :, 0:2],
+                    keypoint_xy_depth[:, :, 0:2],
+                    keypoint_weight[:, :, 0:2],
+                ).item()
+            )
             if idx % 100 == 0:
-                print('Iteration %d in epoch %d' % (idx, epoch))
-                print('The averaged pixel error is (pixel in 256x256 image): ', 256 * xy_error / image.shape[0])
+                print("Iteration %d in epoch %d" % (idx, epoch))
+                print(
+                    "The averaged pixel error is (pixel in 256x256 image): ",
+                    256 * xy_error / image.shape[0],
+                )
 
             # Update info
             train_error_xy += float(xy_error)
 
         # The info at epoch level
-        print('Epoch %d' % epoch)
-        print('The training averaged pixel error is (pixel in 256x256 image): ', 256 * train_error_xy / len(dataset_train))
+        print("Epoch %d" % epoch)
+        print(
+            "The training averaged pixel error is (pixel in 256x256 image): ",
+            256 * train_error_xy / len(dataset_train),
+        )
 
         # Prepare info at epoch level
         network.eval()
@@ -179,28 +211,38 @@ def train(checkpoint_dir: str, start_from_ckpnt: str = '', save_epoch_offset: in
 
             # To predict
             pred = network(image)
-            prob_pred = pred[:, 0:net_config.num_keypoints, :, :]
+            prob_pred = pred[:, 0 : net_config.num_keypoints, :, :]
             _, _, heatmap_height, heatmap_width = prob_pred.shape
 
             # Compute the coordinate
-            keypoint_xy_pred, _ = predict.heatmap2d_to_normalized_imgcoord_argmax(prob_pred)
-            xy_error = float(weighted_l1_loss(keypoint_xy_pred[:, :, 0:2], keypoint_xy_depth[:, :, 0:2],
-                                              keypoint_weight[:, :, 0:2]).item())
+            keypoint_xy_pred, _ = predict.heatmap2d_to_normalized_imgcoord_argmax(
+                prob_pred
+            )
+            xy_error = float(
+                weighted_l1_loss(
+                    keypoint_xy_pred[:, :, 0:2],
+                    keypoint_xy_depth[:, :, 0:2],
+                    keypoint_weight[:, :, 0:2],
+                ).item()
+            )
 
             # Update info
             val_error_xy += float(xy_error)
 
         # The info at epoch level
-        print('The validation averaged pixel error is (pixel in 256x256 image): ', 256 * val_error_xy / len(dataset_val))
+        print(
+            "The validation averaged pixel error is (pixel in 256x256 image): ",
+            256 * val_error_xy / len(dataset_val),
+        )
 
 
-if __name__ == '__main__':
-    #ckpnt_dir = os.path.join(os.path.dirname(__file__), 'checkpoint_hm_l2')
-    #net_path = 'trained_model/checkpoint_hm_l2/checkpoint-98.pth'
-    train(checkpoint_dir='ckpnt')
+if __name__ == "__main__":
+    # ckpnt_dir = os.path.join(os.path.dirname(__file__), 'checkpoint_hm_l2')
+    # net_path = 'trained_model/checkpoint_hm_l2/checkpoint-98.pth'
+    train(checkpoint_dir="ckpnt")
 
     # The visualization code
-    #tmp_dir = 'tmp'
-    #if not os.path.exists(tmp_dir):
+    # tmp_dir = 'tmp'
+    # if not os.path.exists(tmp_dir):
     #    os.mkdir(tmp_dir)
-    #visualize(net_path, tmp_dir)
+    # visualize(net_path, tmp_dir)

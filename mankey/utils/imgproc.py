@@ -1,6 +1,7 @@
 import numpy as np
 import cv2
 import attr
+
 # from typing import List
 
 
@@ -10,23 +11,22 @@ class PixelCoord(object):
     A small struct used to index in image.
     Note that x is the column index, y is row index
     """
+
     x = 0
     y = 0
 
     @property
-    def row_location(self): # type: (PixelCoord) -> int
+    def row_location(self):  # type: (PixelCoord) -> int
         return self.y
 
     @property
-    def col_location(self): # type: (PixelCoord) -> int
+    def col_location(self):  # type: (PixelCoord) -> int
         return self.x
 
 
 # The group of method used for bounding box processing.
 # Mainly used to rectify the bounding box
-def first_nonzero_idx(
-        binary_array,
-        reversed):  # type: (np.ndarray, bool) -> int
+def first_nonzero_idx(binary_array, reversed):  # type: (np.ndarray, bool) -> int
     """
     Get the index of the first element in an array that is not zero
     reversed means whether the binary_array should be reversed
@@ -83,9 +83,9 @@ def mask2bbox(mask_img):  # type: (np.ndarray) -> (PixelCoord, PixelCoord)
 
 
 def pixel_in_bbox(
-        pixel,  # type: PixelCoord
-        top_left,  # type: PixelCoord
-        bottom_right,  # type: PixelCoord
+    pixel,  # type: PixelCoord
+    top_left,  # type: PixelCoord
+    bottom_right,  # type: PixelCoord
 ):  # type: (PixelCoord, PixelCoord, PixelCoord) -> bool
     """
     Given an pixel, check if that pixel in bounding box specificed by top_left and bottom_right
@@ -98,10 +98,16 @@ def pixel_in_bbox(
     if pixel.row_location < 0 or pixel.col_location < 0:
         return False
 
-    if pixel.row_location < top_left.row_location or pixel.row_location > bottom_right.row_location:
+    if (
+        pixel.row_location < top_left.row_location
+        or pixel.row_location > bottom_right.row_location
+    ):
         return False
 
-    if pixel.col_location < top_left.col_location or pixel.col_location > bottom_right.col_location:
+    if (
+        pixel.col_location < top_left.col_location
+        or pixel.col_location > bottom_right.col_location
+    ):
         return False
 
     # Seems ok
@@ -125,27 +131,27 @@ def rotate_2d(pt_2d, rot_rad):  # type: (np.ndarray, float) -> np.ndarray
     return np.array([xx, yy], dtype=np.float32)
 
 
-def transform_2d(point_2d, transform): # type: (np.ndarray, np.ndarray) -> np.ndarray
+def transform_2d(point_2d, transform):  # type: (np.ndarray, np.ndarray) -> np.ndarray
     """
     Homogeneous transformation of 2D point.
     :param point_2d: 2d point expressed in np.ndarray
     :param transform: 3x3 homogeneous transform matrix
     :return: the transformed point
     """
-    src_pt = np.array([point_2d[0], point_2d[1], 1.]).T
+    src_pt = np.array([point_2d[0], point_2d[1], 1.0]).T
     dst_pt = np.dot(transform, src_pt)
     return dst_pt[0:2]
 
 
 def get_transform_to_patch(
-        center_x,  # type: int
-        center_y,  # type: int
-        bbox_width,  # type: int
-        bbox_height,  # type: int
-        dst_width,  # type: int
-        dst_height,  # type: int
-        scale=1.0,  # type: float
-        rot_rad=0.0,  # type: float
+    center_x,  # type: int
+    center_y,  # type: int
+    bbox_width,  # type: int
+    bbox_height,  # type: int
+    dst_width,  # type: int
+    dst_height,  # type: int
+    scale=1.0,  # type: float
+    rot_rad=0.0,  # type: float
 ):
     """
     Given a bounding box expressed as center and size, first augment
@@ -223,16 +229,18 @@ def get_bbox2patch(
     :param rot_rad:
     :return:
     """
-    #from utils.imgproc import rectify_bbox_center_align, rectify_bbox_in_image, get_transform_to_patch
+    # from utils.imgproc import rectify_bbox_center_align, rectify_bbox_in_image, get_transform_to_patch
     # Get the bounding box
     assert patch_height == patch_width
     if on_boundary:
         rectifified_bbox_topleft, rectifified_bbox_bottomright = rectify_bbox_in_image(
-            bbox_topleft, bbox_bottomright,
-            image_width, image_height)
+            bbox_topleft, bbox_bottomright, image_width, image_height
+        )
     else:
-        rectifified_bbox_topleft, rectifified_bbox_bottomright = rectify_bbox_center_align(
-            bbox_topleft, bbox_bottomright)
+        (
+            rectifified_bbox_topleft,
+            rectifified_bbox_bottomright,
+        ) = rectify_bbox_center_align(bbox_topleft, bbox_bottomright)
 
     # Another representation of bounding box
     center_x = int(0.5 * (rectifified_bbox_topleft.x + rectifified_bbox_bottomright.x))
@@ -244,24 +252,29 @@ def get_bbox2patch(
 
     # Invoke the method
     return get_transform_to_patch(
-        center_x, center_y,
-        bbox_width, bbox_height,
-        patch_width, patch_height,
-        scale, rot_rad)
+        center_x,
+        center_y,
+        bbox_width,
+        bbox_height,
+        patch_width,
+        patch_height,
+        scale,
+        rot_rad,
+    )
 
 
 def get_bbox_cropped_image_raw(
-        cv_img,  # type: np.ndarray
-        is_rgb,  # type: bool
-        bbox_topleft,  # type: PixelCoord,
-        bbox_bottomright,  # type: PixelCoord
-        patch_width,  # type: int
-        patch_height,  # type: int
-        bbox_scale=1.0,  # type: float
-        on_boundary=False,  # type: bool
-        # The augmentation parameter
-        scale=1.0,  # type: float
-        rot_rad=0.0,  # type: float
+    cv_img,  # type: np.ndarray
+    is_rgb,  # type: bool
+    bbox_topleft,  # type: PixelCoord,
+    bbox_bottomright,  # type: PixelCoord
+    patch_width,  # type: int
+    patch_height,  # type: int
+    bbox_scale=1.0,  # type: float
+    on_boundary=False,  # type: bool
+    # The augmentation parameter
+    scale=1.0,  # type: float
+    rot_rad=0.0,  # type: float
 ):
     # Get the size of image
     assert cv_img is not None
@@ -273,18 +286,25 @@ def get_bbox_cropped_image_raw(
 
     # Get the transformation to bounding box
     bbox2patch = get_bbox2patch(
-        bbox_topleft=bbox_topleft, bbox_bottomright=bbox_bottomright,
-        image_width=img_width, image_height=img_height,
-        patch_width=patch_width, patch_height=patch_height,
+        bbox_topleft=bbox_topleft,
+        bbox_bottomright=bbox_bottomright,
+        image_width=img_width,
+        image_height=img_height,
+        patch_width=patch_width,
+        patch_height=patch_height,
         on_boundary=on_boundary,
         bbox_scale=bbox_scale,
-        scale=scale, rot_rad=rot_rad)
+        scale=scale,
+        rot_rad=rot_rad,
+    )
 
     # Do transformation
     warped_img = cv2.warpAffine(
-        cv_img, bbox2patch,
+        cv_img,
+        bbox2patch,
         (int(patch_width), int(patch_height)),
-        flags=cv2.INTER_LINEAR)
+        flags=cv2.INTER_LINEAR,
+    )
     return warped_img, bbox2patch
 
 
@@ -309,17 +329,22 @@ def get_bbox_cropped_image_path(
 
     # OK
     return get_bbox_cropped_image_raw(
-        cv_img, is_rgb,
-        bbox_topleft=bbox_topleft, bbox_bottomright=bbox_bottomright,
-        patch_width=patch_width, patch_height=patch_height,
+        cv_img,
+        is_rgb,
+        bbox_topleft=bbox_topleft,
+        bbox_bottomright=bbox_bottomright,
+        patch_width=patch_width,
+        patch_height=patch_height,
         on_boundary=on_boundary,
         bbox_scale=bbox_scale,
-        scale=scale, rot_rad=rot_rad)
+        scale=scale,
+        rot_rad=rot_rad,
+    )
 
 
 def rectify_bbox_center_align(
-        top_left_in,  # type: PixelCoord
-        bottom_right_in,  # type: PixelCoord
+    top_left_in,  # type: PixelCoord
+    bottom_right_in,  # type: PixelCoord
 ):  # type: (PixelCoord, PixelCoord) -> (PixelCoord, PixelCoord)
     """
     Given an input bounding box, change its width or height to make
@@ -348,10 +373,10 @@ def rectify_bbox_center_align(
 
 
 def rectify_bbox_in_image(
-        top_left_in,  # type: PixelCoord
-        bottom_right_in,  # type: PixelCoord
-        image_width,  # type: int
-        image_height,  # type: int
+    top_left_in,  # type: PixelCoord
+    bottom_right_in,  # type: PixelCoord
+    image_width,  # type: int
+    image_height,  # type: int
 ):  # type: (PixelCoord, PixelCoord, int, int) -> (PixelCoord, PixelCoord)
     """
     Rectify the bounding box to have unit aspect ratio, but keep it inside
@@ -364,7 +389,9 @@ def rectify_bbox_in_image(
     :return: A tuple of new top_left and bottom_right
     """
     # Do rectification as normal
-    aspect_fixed_topleft, aspect_fixed_bottomright = rectify_bbox_center_align(top_left_in, bottom_right_in)
+    aspect_fixed_topleft, aspect_fixed_bottomright = rectify_bbox_center_align(
+        top_left_in, bottom_right_in
+    )
 
     # Check each coord
     if aspect_fixed_topleft.x < 0:
@@ -399,9 +426,9 @@ def rectify_bbox_in_image(
 
 # The group of method to scale the rgb image
 def rgb_image_normalize(
-        cv_img,  # type: np.ndarray
-        rgb_mean,  # type: List[float]
-        rgb_scale,  # type: List[float]
+    cv_img,  # type: np.ndarray
+    rgb_mean,  # type: List[float]
+    rgb_scale,  # type: List[float]
 ):  # type: (np.ndarray, List[float], List[float]) -> np.ndarray
     """
     (height, width, channels) -> (channels, height, width), BGR->RGB and normalize
@@ -416,23 +443,25 @@ def rgb_image_normalize(
     tensor = tensor.astype(np.float32)
 
     # Scale and normalize
-    normalizer = [1.0/255.0, 1.0/255.0, 1.0/255.0]
+    normalizer = [1.0 / 255.0, 1.0 / 255.0, 1.0 / 255.0]
     for i in range(3):
         normalizer[i] = normalizer[i] * rgb_scale[i]
 
     # Apply to image
     for channel in range(len(rgb_mean)):
-        tensor[channel, :, :] = (normalizer[channel] * tensor[channel, :, :]) - rgb_mean[channel]
+        tensor[channel, :, :] = (
+            normalizer[channel] * tensor[channel, :, :]
+        ) - rgb_mean[channel]
 
     # OK
     return tensor
 
 
 def depth_image_normalize(
-        cv_depth,  # type: np.ndarray
-        depth_clip,  # type: int
-        depth_mean,  # type: int
-        depth_scale,  # type: int
+    cv_depth,  # type: np.ndarray
+    depth_clip,  # type: int
+    depth_mean,  # type: int
+    depth_scale,  # type: int
 ):  # type: (np.ndarray, int, int, int) -> np.ndarray
     """
     :param cv_depth: image in the size of (img_height, img_width)
@@ -453,9 +482,9 @@ def depth_image_normalize(
 
 
 def get_guassian_heatmap(
-        point_float,  # type: np.ndarray
-        heatmap_size,  # type: int
-        sigma=1
+    point_float,  # type: np.ndarray
+    heatmap_size,  # type: int
+    sigma=1,
 ):  # type: (np.ndarray, int, float) -> np.ndarray
     """
     Given the 2d keypoint, return the target heatmap with Guassian distribution
@@ -471,8 +500,7 @@ def get_guassian_heatmap(
     br = [int(point[0] + tmpSize + 1), int(point[1] + tmpSize + 1)]
 
     # Return an empty heatmap if not in bound
-    if (ul[0] >= heatmap_size or ul[1] >= heatmap_size or
-            br[0] < 0 or br[1] < 0):
+    if ul[0] >= heatmap_size or ul[1] >= heatmap_size or br[0] < 0 or br[1] < 0:
         return np.zeros(shape=(heatmap_size, heatmap_size))
 
     # Generate gaussian
@@ -482,7 +510,7 @@ def get_guassian_heatmap(
     x0 = y0 = size // 2
     sigma = size / 4.0
     # The gaussian is not normalized, we want the center value to equal 1
-    g = np.exp(- ((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma ** 2))
+    g = np.exp(-((x - x0) ** 2 + (y - y0) ** 2) / (2 * sigma**2))
 
     # Usable gaussian range
     g_x = max(0, -ul[0]), min(br[0], heatmap_size) - ul[0]
@@ -493,7 +521,9 @@ def get_guassian_heatmap(
 
     # Construct the image and return
     heatmap = np.zeros((heatmap_size, heatmap_size))
-    heatmap[img_y[0]:img_y[1], img_x[0]:img_x[1]] = g[g_y[0]:g_y[1], g_x[0]:g_x[1]]
+    heatmap[img_y[0] : img_y[1], img_x[0] : img_x[1]] = g[
+        g_y[0] : g_y[1], g_x[0] : g_x[1]
+    ]
     return heatmap
 
 
@@ -509,10 +539,10 @@ def get_visible_mask(binary_mask):  # type: (np.ndarray) -> np.ndarray
 
 
 def draw_image_keypoint(
-        image,  # type: np.ndarray,
-        keypoint_pixelxy_depth,  # type: np.ndarray,
-        keypoint_validity,  # type: np.ndarray
-    ): # type: (np.ndarray, np.ndarray, np.ndarray) -> np.ndarray
+    image,  # type: np.ndarray,
+    keypoint_pixelxy_depth,  # type: np.ndarray,
+    keypoint_validity,  # type: np.ndarray
+):  # type: (np.ndarray, np.ndarray, np.ndarray) -> np.ndarray
     """
     Draw give keypoints on the image
     :param image: opencv image
@@ -528,15 +558,23 @@ def draw_image_keypoint(
             continue
 
         # Draw it
-        cv2.circle(img_clone,
-                   center=(int(keypoint_pixelxy_depth[0, i]), int(keypoint_pixelxy_depth[1, i])),
-                   radius=8, color=(255, 255, 0))
+        cv2.circle(
+            img_clone,
+            center=(
+                int(keypoint_pixelxy_depth[0, i]),
+                int(keypoint_pixelxy_depth[1, i]),
+            ),
+            radius=8,
+            color=(255, 255, 0),
+        )
 
     # OK
     return img_clone
 
 
-def draw_visible_heatmap(heatmap_np, verbose=True): # type: (np.ndarray, bool) -> np.ndarray
+def draw_visible_heatmap(
+    heatmap_np, verbose=True
+):  # type: (np.ndarray, bool) -> np.ndarray
     """
     Visualize the given heatmap
     :param heatmap_np: (height, width) image
@@ -545,7 +583,7 @@ def draw_visible_heatmap(heatmap_np, verbose=True): # type: (np.ndarray, bool) -
     """
     max_heatmap_np = heatmap_np.max()
     if verbose:
-        print('The max value in heatmap is %f' % max_heatmap_np)
+        print("The max value in heatmap is %f" % max_heatmap_np)
 
     # The actual drawing method
     heatmap_vis_raw = cv2.convertScaleAbs(heatmap_np, alpha=(255 / max_heatmap_np))

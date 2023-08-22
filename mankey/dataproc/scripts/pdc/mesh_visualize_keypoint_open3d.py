@@ -12,11 +12,15 @@ produced from scripts/mesh_keypoint_annotate.py
 In the future, we should switch to director annotator
 """
 parser = argparse.ArgumentParser()
-parser.add_argument('--keypoint_yaml_path',
-                    type=str, default='/home/wei/data/pdc/logs_proto/2018-05-15-00-08-46/processed/keypoint.yaml',
-                    help='The annotated keypoint using mesh_keypoint_annotate.py')
-parser.add_argument('--one_by_one', type=bool, default=False,
-                    help='Visualize keypoint one-by-one')
+parser.add_argument(
+    "--keypoint_yaml_path",
+    type=str,
+    default="/home/wei/data/pdc/logs_proto/2018-05-15-00-08-46/processed/keypoint.yaml",
+    help="The annotated keypoint using mesh_keypoint_annotate.py",
+)
+parser.add_argument(
+    "--one_by_one", type=bool, default=False, help="Visualize keypoint one-by-one"
+)
 
 # The parsed argument
 args = parser.parse_args()
@@ -25,7 +29,7 @@ args = parser.parse_args()
 def main():
     keypoint_path: str = args.keypoint_yaml_path
     keypoint_datamap = None
-    with open(keypoint_path, 'r') as file:
+    with open(keypoint_path, "r") as file:
         try:
             keypoint_datamap = yaml.load(file)
         except yaml.YAMLError as exc:
@@ -34,9 +38,11 @@ def main():
 
     # Process the map
     assert keypoint_datamap is not None
-    mesh_path: str = keypoint_datamap['mesh_path']
-    keypoint_index: List[int] = keypoint_datamap['keypoint_index']
-    keypoint_3d_position: List[List[float]] = keypoint_datamap['keypoint_world_position']
+    mesh_path: str = keypoint_datamap["mesh_path"]
+    keypoint_index: List[int] = keypoint_datamap["keypoint_index"]
+    keypoint_3d_position: List[List[float]] = keypoint_datamap[
+        "keypoint_world_position"
+    ]
     pcd = open3d.read_point_cloud(mesh_path)
 
     # Depends on visualization type
@@ -53,5 +59,5 @@ def main():
         draw_all_keypoints(pcd, keypoint_np)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

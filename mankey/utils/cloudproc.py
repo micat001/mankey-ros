@@ -1,15 +1,16 @@
 import open3d
 import numpy as np
+
 # from typing import List
 
 
 # Get open3d point cloud from depth
 def create_pointcloud_from_depth(
-        depth_path,  # type: str,
-        focal_x,  # type: float,
-        focal_y,  # type: float,
-        principal_x,  # type: float,
-        principal_y,  # type: float
+    depth_path,  # type: str,
+    focal_x,  # type: float,
+    focal_y,  # type: float,
+    principal_x,  # type: float,
+    principal_y,  # type: float
 ):
     depth_image = open3d.read_image(depth_path)
     intrinsic = open3d.camera.PinholeCameraIntrinsic()
@@ -19,8 +20,9 @@ def create_pointcloud_from_depth(
 
 # Draw keypoint as small sphere
 def get_keypoint_sphere(
-        keypoint,  # type: List[float],
-        radius=0.01):
+    keypoint,  # type: List[float],
+    radius=0.01,
+):
     """
     Create a sphere mesh used for keypoint visualization
     :param keypoint: length 3 list (x, y, z) for the center of the mesh
@@ -38,9 +40,10 @@ def get_keypoint_sphere(
 
 
 def draw_all_keypoints(
-        point_cloud,
-        keypoint,  # type: np.ndarray,
-        keypoint_size=0.01):
+    point_cloud,
+    keypoint,  # type: np.ndarray,
+    keypoint_size=0.01,
+):
     """
     Draw all the keypoint associated with the point_cloud (mesh)
     :param point_cloud: open3d point cloud
@@ -65,9 +68,10 @@ def draw_all_keypoints(
 
 
 def draw_single_keypoint(
-        point_cloud,
-        keypoint,  # type: List[float],
-        keypoint_size=0.01):
+    point_cloud,
+    keypoint,  # type: List[float],
+    keypoint_size=0.01,
+):
     """
     Draw a keypoint with point cloud that this
     keypoint belongs to.

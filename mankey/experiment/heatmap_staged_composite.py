@@ -7,8 +7,14 @@ from mankey.network.weighted_loss import weighted_l1_loss
 import mankey.network.predict as predict
 import mankey.config.parameter as parameter
 import mankey.network.visualize_dbg as visualize_dbg
-from mankey.dataproc.spartan_supervised_db import SpartanSupvervisedKeypointDBConfig, SpartanSupervisedKeypointDatabase
-from mankey.dataproc.supervised_keypoint_loader import SupervisedKeypointDatasetConfig, SupervisedKeypointDataset
+from mankey.dataproc.spartan_supervised_db import (
+    SpartanSupvervisedKeypointDBConfig,
+    SpartanSupervisedKeypointDatabase,
+)
+from mankey.dataproc.supervised_keypoint_loader import (
+    SupervisedKeypointDatasetConfig,
+    SupervisedKeypointDataset,
+)
 
 
 # Some global parameter
@@ -17,12 +23,14 @@ n_epoch = 120
 heatmap_weight = 1
 
 
-def construct_dataset(is_train: bool) -> (torch.utils.data.Dataset, SupervisedKeypointDatasetConfig):
+def construct_dataset(
+    is_train: bool,
+) -> (torch.utils.data.Dataset, SupervisedKeypointDatasetConfig):
     # Construct the db
     db_config = SpartanSupvervisedKeypointDBConfig()
-    db_config.keypoint_yaml_name = 'shoe_6_keypoint_image.yaml'
-    db_config.pdc_data_root = '/home/wei/data/pdc'
-    db_config.config_file_path = '/home/wei/Coding/mankey/config/boot_logs.txt'
+    db_config.keypoint_yaml_name = "shoe_6_keypoint_image.yaml"
+    db_config.pdc_data_root = "/home/wei/data/pdc"
+    db_config.config_file_path = "/home/wei/Coding/mankey/config/boot_logs.txt"
     database = SpartanSupervisedKeypointDatabase(db_config)
 
     # Construct torch dataset
@@ -71,7 +79,9 @@ def visualize(network_path: str, save_dir: str):
     entry_idx.append(35)
     entry_idx.append(1126)
     for i in range(len(entry_idx)):
-        visualize_dbg.visualize_entry_staged(entry_idx[i], network, dataset, config, save_dir)
+        visualize_dbg.visualize_entry_staged(
+            entry_idx[i], network, dataset, config, save_dir
+        )
 
 
 def train(checkpoint_dir: str):
@@ -80,8 +90,12 @@ def train(checkpoint_dir: str):
     dataset_val, val_config = construct_dataset(is_train=False)
 
     # And the dataloader
-    loader_train = DataLoader(dataset=dataset_train, batch_size=16, shuffle=True, num_workers=10)
-    loader_val = DataLoader(dataset=dataset_val, batch_size=8, shuffle=False, num_workers=10)
+    loader_train = DataLoader(
+        dataset=dataset_train, batch_size=16, shuffle=True, num_workers=10
+    )
+    loader_val = DataLoader(
+        dataset=dataset_val, batch_size=8, shuffle=False, num_workers=10
+    )
 
     # Construct the regressor
     network, net_config = construct_network()
@@ -104,9 +118,9 @@ def train(checkpoint_dir: str):
     for epoch in range(n_epoch):
         # Save the network
         if epoch % 2 == 0 and epoch > 0:
-            file_name = 'checkpoint-%d.pth' % epoch
+            file_name = "checkpoint-%d.pth" % epoch
             checkpoint_path = os.path.join(checkpoint_dir, file_name)
-            print('Save the network at %s' % checkpoint_path)
+            print("Save the network at %s" % checkpoint_path)
             torch.save(network.state_dict(), checkpoint_path)
 
         # Prepare info for training
@@ -118,7 +132,7 @@ def train(checkpoint_dir: str):
         # The learning rate step
         scheduler.step()
         for param_group in optimizer.param_groups:
-            print('The learning rate is ', param_group['lr'])
+            print("The learning rate is ", param_group["lr"])
 
         # The training iteration over the dataset
         for idx, data in enumerate(loader_train):
@@ -140,13 +154,17 @@ def train(checkpoint_dir: str):
 
             # The last stage
             raw_pred_last = raw_pred[-1]
-            prob_pred_last = raw_pred_last[:, 0:net_config.num_keypoints, :, :]
-            depthmap_pred_last = raw_pred_last[:, net_config.num_keypoints:, :, :]
-            heatmap_last = predict.heatmap_from_predict(prob_pred_last, net_config.num_keypoints)
+            prob_pred_last = raw_pred_last[:, 0 : net_config.num_keypoints, :, :]
+            depthmap_pred_last = raw_pred_last[:, net_config.num_keypoints :, :, :]
+            heatmap_last = predict.heatmap_from_predict(
+                prob_pred_last, net_config.num_keypoints
+            )
             _, _, heatmap_height, heatmap_width = heatmap_last.shape
 
             # Compute the coordinate
-            coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(heatmap_last, net_config.num_keypoints)
+            coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(
+                heatmap_last, net_config.num_keypoints
+            )
             depth_pred = predict.depth_integration(heatmap_last, depthmap_pred_last)
 
             # Concantate them
@@ -154,11 +172,13 @@ def train(checkpoint_dir: str):
 
             # Compute loss
             loss = weighted_l1_loss(xy_depth_pred, keypoint_xy_depth, keypoint_weight)
-            loss = loss + heatmap_weight * heatmap_criterion(prob_pred_last, target_heatmap)
+            loss = loss + heatmap_weight * heatmap_criterion(
+                prob_pred_last, target_heatmap
+            )
 
             # For all other layers
             for stage_i in range(len(raw_pred) - 1):
-                prob_pred_i = raw_pred[stage_i]   # Only 2d prediction on previous layers
+                prob_pred_i = raw_pred[stage_i]  # Only 2d prediction on previous layers
                 assert prob_pred_i.shape == prob_pred_last.shape
                 # heatmap_loss = torch.abs(prob_pred_i - target_heatmap).sum() / prob_pred_i.shape[0]
                 heatmap_loss = heatmap_criterion(prob_pred_i, target_heatmap)
@@ -170,25 +190,48 @@ def train(checkpoint_dir: str):
             del loss
 
             # Log info
-            xy_error = float(weighted_l1_loss(
-                xy_depth_pred[:, :, 0:2],
-                keypoint_xy_depth[:, :, 0:2],
-                keypoint_weight[:, :, 0:2]).item())
-            depth_error = float(weighted_l1_loss(
-                xy_depth_pred[:, :, 2],
-                keypoint_xy_depth[:, :, 2],
-                keypoint_weight[:, :, 2]).item())
+            xy_error = float(
+                weighted_l1_loss(
+                    xy_depth_pred[:, :, 0:2],
+                    keypoint_xy_depth[:, :, 0:2],
+                    keypoint_weight[:, :, 0:2],
+                ).item()
+            )
+            depth_error = float(
+                weighted_l1_loss(
+                    xy_depth_pred[:, :, 2],
+                    keypoint_xy_depth[:, :, 2],
+                    keypoint_weight[:, :, 2],
+                ).item()
+            )
 
             # The error of internal stage
-            keypoint_xy_pred_internal, _ = predict.heatmap2d_to_normalized_imgcoord_argmax(raw_pred[0])
-            xy_error_internal = float(weighted_l1_loss(keypoint_xy_pred_internal[:, :, 0:2], keypoint_xy_depth[:, :, 0:2],
-                                              keypoint_weight[:, :, 0:2]).item())
+            (
+                keypoint_xy_pred_internal,
+                _,
+            ) = predict.heatmap2d_to_normalized_imgcoord_argmax(raw_pred[0])
+            xy_error_internal = float(
+                weighted_l1_loss(
+                    keypoint_xy_pred_internal[:, :, 0:2],
+                    keypoint_xy_depth[:, :, 0:2],
+                    keypoint_weight[:, :, 0:2],
+                ).item()
+            )
 
             if idx % 100 == 0:
-                print('Iteration %d in epoch %d' % (idx, epoch))
-                print('The averaged pixel error is (pixel in 256x256 image): ', 256 * xy_error / len(xy_depth_pred))
-                print('The averaged depth error is (mm): ', 256 * depth_error / len(xy_depth_pred))
-                print('The averaged internal pixel error is (pixel in 256x256 image): ', 256 * xy_error_internal / image.shape[0])
+                print("Iteration %d in epoch %d" % (idx, epoch))
+                print(
+                    "The averaged pixel error is (pixel in 256x256 image): ",
+                    256 * xy_error / len(xy_depth_pred),
+                )
+                print(
+                    "The averaged depth error is (mm): ",
+                    256 * depth_error / len(xy_depth_pred),
+                )
+                print(
+                    "The averaged internal pixel error is (pixel in 256x256 image): ",
+                    256 * xy_error_internal / image.shape[0],
+                )
 
             # Update info
             train_error_xy += float(xy_error)
@@ -196,13 +239,19 @@ def train(checkpoint_dir: str):
             train_error_xy_internal += float(xy_error_internal)
 
         # The info at epoch level
-        print('Epoch %d' % epoch)
-        print('The training averaged pixel error is (pixel in 256x256 image): ',
-              256 * train_error_xy / len(dataset_train))
-        print('The training internal averaged pixel error is (pixel in 256x256 image): ',
-              256 * train_error_xy_internal / len(dataset_train))
-        print('The training averaged depth error is (mm): ',
-              train_config.depth_image_scale * train_error_depth / len(dataset_train))
+        print("Epoch %d" % epoch)
+        print(
+            "The training averaged pixel error is (pixel in 256x256 image): ",
+            256 * train_error_xy / len(dataset_train),
+        )
+        print(
+            "The training internal averaged pixel error is (pixel in 256x256 image): ",
+            256 * train_error_xy_internal / len(dataset_train),
+        )
+        print(
+            "The training averaged depth error is (mm): ",
+            train_config.depth_image_scale * train_error_depth / len(dataset_train),
+        )
 
         # Prepare info at epoch level
         if True:
@@ -224,44 +273,58 @@ def train(checkpoint_dir: str):
 
             # The last stage
             raw_pred_last = raw_pred[-1]
-            prob_pred_last = raw_pred_last[:, 0:net_config.num_keypoints, :, :]
-            depthmap_pred_last = raw_pred_last[:, net_config.num_keypoints:, :, :]
-            heatmap_last = predict.heatmap_from_predict(prob_pred_last, net_config.num_keypoints)
+            prob_pred_last = raw_pred_last[:, 0 : net_config.num_keypoints, :, :]
+            depthmap_pred_last = raw_pred_last[:, net_config.num_keypoints :, :, :]
+            heatmap_last = predict.heatmap_from_predict(
+                prob_pred_last, net_config.num_keypoints
+            )
             _, _, heatmap_height, heatmap_width = heatmap_last.shape
 
             # Compute the coordinate
-            coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(heatmap_last, net_config.num_keypoints)
+            coord_x, coord_y = predict.heatmap2d_to_normalized_imgcoord_gpu(
+                heatmap_last, net_config.num_keypoints
+            )
             depth_pred = predict.depth_integration(heatmap_last, depthmap_pred_last)
             xy_depth_pred = torch.cat([coord_x, coord_y, depth_pred], dim=2)
 
             # Log info
-            xy_error = float(weighted_l1_loss(
-                xy_depth_pred[:, :, 0:2],
-                keypoint_xy_depth[:, :, 0:2],
-                keypoint_weight[:, :, 0:2]).item())
-            depth_error = float(weighted_l1_loss(
-                xy_depth_pred[:, :, 2],
-                keypoint_xy_depth[:, :, 2],
-                keypoint_weight[:, :, 2]).item())
+            xy_error = float(
+                weighted_l1_loss(
+                    xy_depth_pred[:, :, 0:2],
+                    keypoint_xy_depth[:, :, 0:2],
+                    keypoint_weight[:, :, 0:2],
+                ).item()
+            )
+            depth_error = float(
+                weighted_l1_loss(
+                    xy_depth_pred[:, :, 2],
+                    keypoint_xy_depth[:, :, 2],
+                    keypoint_weight[:, :, 2],
+                ).item()
+            )
 
             # Update info
             val_error_xy += float(xy_error)
             val_error_depth += float(depth_error)
 
         # The info at epoch level
-        print('The validation averaged pixel error is (pixel in 256x256 image): ',
-              256 * val_error_xy / len(dataset_val))
-        print('The validation averaged depth error is (mm): ',
-              train_config.depth_image_scale * val_error_depth / len(dataset_val))
+        print(
+            "The validation averaged pixel error is (pixel in 256x256 image): ",
+            256 * val_error_xy / len(dataset_val),
+        )
+        print(
+            "The validation averaged depth error is (mm): ",
+            train_config.depth_image_scale * val_error_depth / len(dataset_val),
+        )
 
 
-if __name__ == '__main__':
-    ckpnt_dir = os.path.join(os.path.dirname(__file__), 'ckpnt')
+if __name__ == "__main__":
+    ckpnt_dir = os.path.join(os.path.dirname(__file__), "ckpnt")
     train(checkpoint_dir=ckpnt_dir)
 
     # The visualization code
     # net_path = 'checkpoint_composite/checkpoint-10.pth'
     # tmp_dir = 'tmp'
-    #if not os.path.exists(tmp_dir):
+    # if not os.path.exists(tmp_dir):
     #    os.mkdir(tmp_dir)
-    #visualize(net_path, tmp_dir)
+    # visualize(net_path, tmp_dir)

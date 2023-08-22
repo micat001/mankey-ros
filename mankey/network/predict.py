@@ -3,11 +3,11 @@ from torch.nn import functional as F
 
 
 def get_integral_preds_3d_gpu(
-        heatmaps,  # type: torch.Tensor,
-        num_keypoints,  # type: int,
-        x_dim,  # type: int,
-        y_dim,  # type: int,
-        z_dim,  # type: int
+    heatmaps,  # type: torch.Tensor,
+    num_keypoints,  # type: int,
+    x_dim,  # type: int,
+    y_dim,  # type: int,
+    z_dim,  # type: int
 ):  # type: (torch.Tensor, int, int, int, int) -> (torch.Tensor, torch.Tensor, torch.Tensor)
     # Reshape the tensor into 3d
     heatmaps = heatmaps.reshape((heatmaps.shape[0], num_keypoints, z_dim, y_dim, x_dim))
@@ -23,9 +23,15 @@ def get_integral_preds_3d_gpu(
     accu_z = accu_z.sum(dim=3)
 
     # The pointwise product
-    accu_x = accu_x * torch.cuda.comm.broadcast(torch.arange(x_dim), devices=[accu_x.device.index])[0].type(torch.cuda.FloatTensor)
-    accu_y = accu_y * torch.cuda.comm.broadcast(torch.arange(y_dim), devices=[accu_y.device.index])[0].type(torch.cuda.FloatTensor)
-    accu_z = accu_z * torch.cuda.comm.broadcast(torch.arange(z_dim), devices=[accu_z.device.index])[0].type(torch.cuda.FloatTensor)
+    accu_x = accu_x * torch.cuda.comm.broadcast(
+        torch.arange(x_dim), devices=[accu_x.device.index]
+    )[0].type(torch.cuda.FloatTensor)
+    accu_y = accu_y * torch.cuda.comm.broadcast(
+        torch.arange(y_dim), devices=[accu_y.device.index]
+    )[0].type(torch.cuda.FloatTensor)
+    accu_z = accu_z * torch.cuda.comm.broadcast(
+        torch.arange(z_dim), devices=[accu_z.device.index]
+    )[0].type(torch.cuda.FloatTensor)
 
     # Further reduce to three (batch_size, num_keypoints) tensor
     accu_x = accu_x.sum(dim=2, keepdim=True)
@@ -35,11 +41,11 @@ def get_integral_preds_3d_gpu(
 
 
 def get_integral_preds_3d_cpu(
-        heatmaps,  # type: torch.Tensor,
-        num_keypoints,  # type: int,
-        x_dim,  # type: int,
-        y_dim,  # type: int,
-        z_dim,  # type: int
+    heatmaps,  # type: torch.Tensor,
+    num_keypoints,  # type: int,
+    x_dim,  # type: int,
+    y_dim,  # type: int,
+    z_dim,  # type: int
 ):  # type: (torch.Tensor, int, int, int, int) -> (torch.Tensor, torch.Tensor, torch.Tensor)
     """
     Take a normalized volumetric heatmap, get the 3d prediction from it
@@ -76,7 +82,9 @@ def get_integral_preds_3d_cpu(
     return accu_x, accu_y, accu_z
 
 
-def heatmap_from_predict(probability_preds, num_keypoints):  # type: (torch.Tensor, int) -> torch.Tensor:
+def heatmap_from_predict(
+    probability_preds, num_keypoints
+):  # type: (torch.Tensor, int) -> torch.Tensor:
     """
     Given the probability prediction, compute the actual probability map using softmax.
     :param probability_preds: (batch_size, n_keypoint, height, width) for 2d heatmap (batch_size, n_keypoint, height, width)
@@ -91,8 +99,8 @@ def heatmap_from_predict(probability_preds, num_keypoints):  # type: (torch.Tens
 
 
 def heatmap2d_to_imgcoord_cpu(
-        heatmap,
-        num_keypoints):  # type: (torch.Tensor, int) -> (torch.Tensor, torch.Tensor)
+    heatmap, num_keypoints
+):  # type: (torch.Tensor, int) -> (torch.Tensor, torch.Tensor)
     """
     Given the heatmap, regress the image coordinate in x (width) and y (height) direction.
     This implementation only works for 2D heatmap.
@@ -119,8 +127,8 @@ def heatmap2d_to_imgcoord_cpu(
 
 
 def heatmap2d_to_imgcoord_gpu(
-        heatmap,
-        num_keypoints):  # type: (torch.Tensor, int) -> (torch.Tensor, torch.Tensor)
+    heatmap, num_keypoints
+):  # type: (torch.Tensor, int) -> (torch.Tensor, torch.Tensor)
     assert heatmap.shape[1] == num_keypoints
     batch_size, _, y_dim, x_dim = heatmap.shape
 
@@ -129,10 +137,12 @@ def heatmap2d_to_imgcoord_gpu(
     accu_y = heatmap.sum(dim=3)
 
     # The pointwise product
-    accu_x = accu_x * torch.cuda.comm.broadcast(torch.arange(x_dim), devices=[accu_x.device.index])[0].type(
-        torch.cuda.FloatTensor)
-    accu_y = accu_y * torch.cuda.comm.broadcast(torch.arange(y_dim), devices=[accu_y.device.index])[0].type(
-        torch.cuda.FloatTensor)
+    accu_x = accu_x * torch.cuda.comm.broadcast(
+        torch.arange(x_dim), devices=[accu_x.device.index]
+    )[0].type(torch.cuda.FloatTensor)
+    accu_y = accu_y * torch.cuda.comm.broadcast(
+        torch.arange(y_dim), devices=[accu_y.device.index]
+    )[0].type(torch.cuda.FloatTensor)
 
     # Further reduce to three (batch_size, num_keypoints) tensor
     accu_x = accu_x.sum(dim=2, keepdim=True)
@@ -141,8 +151,8 @@ def heatmap2d_to_imgcoord_gpu(
 
 
 def heatmap2d_to_normalized_imgcoord_gpu(
-        heatmap,
-        num_keypoints):  # type: (torch.Tensor, int) -> (torch.Tensor, torch.Tensor)
+    heatmap, num_keypoints
+):  # type: (torch.Tensor, int) -> (torch.Tensor, torch.Tensor)
     """
     Regress the normalized coordinate for x and y from the heatmap.
     The range of normalized coordinate is [-0.5, -0.5] in current implementation.
@@ -162,7 +172,9 @@ def heatmap2d_to_normalized_imgcoord_gpu(
     return coord_x, coord_y
 
 
-def depth_integration(heatmap, depth_pred):  # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
+def depth_integration(
+    heatmap, depth_pred
+):  # type: (torch.Tensor, torch.Tensor) -> torch.Tensor
     """
     Given the heatmap (normalized) and depthmap prediction, compute the
     depth value at the keypoint. There is no normalization on the depth.
@@ -182,7 +194,9 @@ def depth_integration(heatmap, depth_pred):  # type: (torch.Tensor, torch.Tensor
     return predict.sum(dim=2, keepdim=True)
 
 
-def heatmap2d_to_imgcoord_argmax(heatmap):  # type: (torch.Tensor) -> (torch.Tensor, torch.Tensor)
+def heatmap2d_to_imgcoord_argmax(
+    heatmap,
+):  # type: (torch.Tensor) -> (torch.Tensor, torch.Tensor)
     """
     Given the heatmap, compute the pixel with maximum heat value
     Note that this method is not differential
@@ -194,13 +208,17 @@ def heatmap2d_to_imgcoord_argmax(heatmap):  # type: (torch.Tensor) -> (torch.Ten
     # Get the max value and index
     max_val, flat_idx = torch.max(heatmap.view(n_batch, n_keypoint, -1), 2)
     flat_idx_float = flat_idx.float()
-    keypoint_xy_pred = torch.zeros(size=[n_batch, n_keypoint, 2], device=heatmap.get_device())
+    keypoint_xy_pred = torch.zeros(
+        size=[n_batch, n_keypoint, 2], device=heatmap.get_device()
+    )
     keypoint_xy_pred[:, :, 0] = (flat_idx_float - 1) % width
     keypoint_xy_pred[:, :, 1] = torch.floor((flat_idx_float - 1) / width)
     return keypoint_xy_pred, max_val
 
 
-def heatmap2d_to_normalized_imgcoord_argmax(heatmap):  # type: (torch.Tensor) -> (torch.Tensor, torch.Tensor)
+def heatmap2d_to_normalized_imgcoord_argmax(
+    heatmap,
+):  # type: (torch.Tensor) -> (torch.Tensor, torch.Tensor)
     """
     Given a 2D heatmap, compute the pixel coordinate with maximum heat value
     :param heatmap: (batch_size, n_keypoints, map_height, map_width) torch.Tensor

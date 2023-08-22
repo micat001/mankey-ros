@@ -3,9 +3,9 @@ import torch
 
 
 class HourglassNetTest(unittest.TestCase):
-
     def test_output_size(self):
         from mankey.network.hourglass_staged import HourglassNet, HourglassNetConfig
+
         config = HourglassNetConfig()
         config.num_keypoints = 10
         config.image_channels = 4
@@ -25,9 +25,13 @@ class HourglassNetTest(unittest.TestCase):
 
 
 class ResnetNoStageTest(unittest.TestCase):
-
     def test_output_size(self):
-        from mankey.network.resnet_nostage import ResnetNoStageConfig, ResnetNoStage, init_from_modelzoo
+        from mankey.network.resnet_nostage import (
+            ResnetNoStageConfig,
+            ResnetNoStage,
+            init_from_modelzoo,
+        )
+
         config = ResnetNoStageConfig()
         config.num_layers = 50
         config.num_keypoints = 10
@@ -50,5 +54,5 @@ class ResnetNoStageTest(unittest.TestCase):
         self.assertEqual(out.shape[3], 256 / 4)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

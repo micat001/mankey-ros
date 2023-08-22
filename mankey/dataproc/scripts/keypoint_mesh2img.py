@@ -11,32 +11,40 @@ The script used to transfer the keypoint annotation from
 mesh to keypoint on images, given the pose and intrinsic of the camera
 """
 parser = argparse.ArgumentParser()
-parser.add_argument('--keypoint_yaml_path',
-                    type=str, default='/home/wei/data/pdc/logs_proto/2018-05-14-22-10-53/processed/keypoint.yaml',
-                    help='The full path for keypoint for a mesh model')
-parser.add_argument('--scene_log_path',
-                    type=str,
-                    default='/home/wei/data/pdc/logs_proto/2018-05-14-22-10-53/',
-                    help='The full log (scene) whose mesh corresponded to keypoint_yaml_path')
-parser.add_argument('--output_yaml_path',
-                    type=str, default='/home/wei/data/pdc/logs_proto/2018-05-14-22-10-53/processed/scene_keypoint.yaml',
-                    help='The full output path for image level keypoint information. ')
+parser.add_argument(
+    "--keypoint_yaml_path",
+    type=str,
+    default="/home/wei/data/pdc/logs_proto/2018-05-14-22-10-53/processed/keypoint.yaml",
+    help="The full path for keypoint for a mesh model",
+)
+parser.add_argument(
+    "--scene_log_path",
+    type=str,
+    default="/home/wei/data/pdc/logs_proto/2018-05-14-22-10-53/",
+    help="The full log (scene) whose mesh corresponded to keypoint_yaml_path",
+)
+parser.add_argument(
+    "--output_yaml_path",
+    type=str,
+    default="/home/wei/data/pdc/logs_proto/2018-05-14-22-10-53/processed/scene_keypoint.yaml",
+    help="The full output path for image level keypoint information. ",
+)
 args = parser.parse_args()
 
 # The root for many level of directories
 scene_data_root = args.scene_log_path
-scene_processed_root = os.path.join(scene_data_root, 'processed')
-raw_image_root = os.path.join(scene_processed_root, 'images')
+scene_processed_root = os.path.join(scene_data_root, "processed")
+raw_image_root = os.path.join(scene_processed_root, "images")
 
 
 # The path for camera config
-camera_config_path = os.path.join(raw_image_root, 'camera_info.yaml')
+camera_config_path = os.path.join(raw_image_root, "camera_info.yaml")
 assert os.path.exists(camera_config_path)
-camera_config_map = yaml.load(open(camera_config_path, 'r'))
-focal_x: float = camera_config_map['camera_matrix']['data'][0]
-focal_y: float = camera_config_map['camera_matrix']['data'][4]
-principal_x: float = camera_config_map['camera_matrix']['data'][2]
-principal_y: float = camera_config_map['camera_matrix']['data'][5]
+camera_config_map = yaml.load(open(camera_config_path, "r"))
+focal_x: float = camera_config_map["camera_matrix"]["data"][0]
+focal_y: float = camera_config_map["camera_matrix"]["data"][4]
+principal_x: float = camera_config_map["camera_matrix"]["data"][2]
+principal_y: float = camera_config_map["camera_matrix"]["data"][5]
 
 
 def point2pixel(keypoint_in_camera: np.ndarray) -> np.ndarray:
@@ -49,8 +57,14 @@ def point2pixel(keypoint_in_camera: np.ndarray) -> np.ndarray:
     assert len(keypoint_in_camera.shape) is 2
     n_keypoint: int = keypoint_in_camera.shape[1]
     xy_depth = np.zeros((3, n_keypoint), dtype=np.int)
-    xy_depth[0, :] = (np.divide(keypoint_in_camera[0, :], keypoint_in_camera[2, :]) * focal_x + principal_x).astype(np.int)
-    xy_depth[1, :] = (np.divide(keypoint_in_camera[1, :], keypoint_in_camera[2, :]) * focal_y + principal_y).astype(np.int)
+    xy_depth[0, :] = (
+        np.divide(keypoint_in_camera[0, :], keypoint_in_camera[2, :]) * focal_x
+        + principal_x
+    ).astype(np.int)
+    xy_depth[1, :] = (
+        np.divide(keypoint_in_camera[1, :], keypoint_in_camera[2, :]) * focal_y
+        + principal_y
+    ).astype(np.int)
     xy_depth[2, :] = (1000.0 * keypoint_in_camera[2, :]).astype(np.int)
     return xy_depth
 
@@ -64,17 +78,17 @@ def camera2world_from_map(camera2world_map) -> np.ndarray:
     """
     # The rotation part
     camera2world_quat = [1, 0, 0, 0]
-    camera2world_quat[0] = camera2world_map['quaternion']['w']
-    camera2world_quat[1] = camera2world_map['quaternion']['x']
-    camera2world_quat[2] = camera2world_map['quaternion']['y']
-    camera2world_quat[3] = camera2world_map['quaternion']['z']
+    camera2world_quat[0] = camera2world_map["quaternion"]["w"]
+    camera2world_quat[1] = camera2world_map["quaternion"]["x"]
+    camera2world_quat[2] = camera2world_map["quaternion"]["y"]
+    camera2world_quat[3] = camera2world_map["quaternion"]["z"]
     camera2world_quat = np.asarray(camera2world_quat)
     camera2world_matrix = quaternion_matrix(camera2world_quat)
 
     # The linear part
-    camera2world_matrix[0, 3] = camera2world_map['translation']['x']
-    camera2world_matrix[1, 3] = camera2world_map['translation']['y']
-    camera2world_matrix[2, 3] = camera2world_map['translation']['z']
+    camera2world_matrix[0, 3] = camera2world_map["translation"]["x"]
+    camera2world_matrix[1, 3] = camera2world_map["translation"]["y"]
+    camera2world_matrix[2, 3] = camera2world_map["translation"]["z"]
     return camera2world_matrix
 
 
@@ -90,7 +104,7 @@ def get_keypoint_in_world(mesh_keypoint_map) -> np.ndarray:
     :param mesh_keypoint_map:
     :return:np.ndarray at (4, num_keypoints)
     """
-    keypoint_in_world: List[List[float]] = mesh_keypoint_map['keypoint_world_position']
+    keypoint_in_world: List[List[float]] = mesh_keypoint_map["keypoint_world_position"]
     keypoint_np = np.ones((4, len(keypoint_in_world)))
     offset: int = 0
     for keypoint in keypoint_in_world:
@@ -110,7 +124,7 @@ def process_scene_image(image_data_map, keypoint_in_world: np.ndarray):
     :param keypoint_in_world: (4, n_keypoint) numpy ndarray for keypoint in world frame
     :return: None
     """
-    camera2world_map = image_data_map['camera_to_world']
+    camera2world_map = image_data_map["camera_to_world"]
     world2camera = world2camera_from_map(camera2world_map)
 
     # Do transform and save the keypoint in data map
@@ -118,23 +132,27 @@ def process_scene_image(image_data_map, keypoint_in_world: np.ndarray):
     keypoint_in_camera = world2camera.dot(keypoint_in_world)
     keypoint_in_camera_list = []
     for i in range(n_keypoints):
-        keypoint_in_camera_list.append([
-            float(keypoint_in_camera[0, i]),
-            float(keypoint_in_camera[1, i]),
-            float(keypoint_in_camera[2, i])]
+        keypoint_in_camera_list.append(
+            [
+                float(keypoint_in_camera[0, i]),
+                float(keypoint_in_camera[1, i]),
+                float(keypoint_in_camera[2, i]),
+            ]
         )
-    image_data_map['3d_keypoint_camera_frame'] = keypoint_in_camera_list
+    image_data_map["3d_keypoint_camera_frame"] = keypoint_in_camera_list
 
     # Project the keypoint into pixel and depth
     pixel_xy_depth = point2pixel(keypoint_in_camera)
     pixel_xy_depth_list = []
     for i in range(n_keypoints):
-        pixel_xy_depth_list.append([
-            int(pixel_xy_depth[0, i]),
-            int(pixel_xy_depth[1, i]),
-            int(pixel_xy_depth[2, i])]
+        pixel_xy_depth_list.append(
+            [
+                int(pixel_xy_depth[0, i]),
+                int(pixel_xy_depth[1, i]),
+                int(pixel_xy_depth[2, i]),
+            ]
         )
-    image_data_map['keypoint_pixel_xy_depth'] = pixel_xy_depth_list
+    image_data_map["keypoint_pixel_xy_depth"] = pixel_xy_depth_list
 
 
 def process_scene(pose_data_map, keypoint_in_world: np.ndarray, output_path: str):
@@ -151,21 +169,21 @@ def process_scene(pose_data_map, keypoint_in_world: np.ndarray, output_path: str
         process_scene_image(image_data_map, keypoint_in_world)
 
     # Save the output as path
-    with open(output_path, 'w') as out_file:
+    with open(output_path, "w") as out_file:
         yaml.dump(pose_data_map, out_file)
 
 
 def main():
     # Load the pose data
-    pose_data_path: str = os.path.join(raw_image_root, 'pose_data.yaml')
+    pose_data_path: str = os.path.join(raw_image_root, "pose_data.yaml")
     assert os.path.exists(pose_data_path)
-    in_pose_file = open(pose_data_path, 'r')
+    in_pose_file = open(pose_data_path, "r")
     pose_data_map = yaml.load(in_pose_file)
 
     # Load the keypoint data
     keypoint_data_path = args.keypoint_yaml_path
     assert os.path.exists(keypoint_data_path)
-    in_keypoint_file = open(keypoint_data_path, 'r')
+    in_keypoint_file = open(keypoint_data_path, "r")
     keypoint_data_map = yaml.load(in_keypoint_file)
     keypoint_in_world = get_keypoint_in_world(keypoint_data_map)
 
@@ -174,5 +192,5 @@ def main():
     process_scene(pose_data_map, keypoint_in_world, output_path)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

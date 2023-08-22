@@ -8,13 +8,13 @@ from typing import List
 @attr.s
 class SupervisedKeypointDBEntry:
     # The path to rgb is must
-    rgb_image_path = ''
+    rgb_image_path = ""
 
     # The path to depth image
-    depth_image_path = ''
+    depth_image_path = ""
 
     # The path to mask image
-    binary_mask_path = ''
+    binary_mask_path = ""
 
     # If length zero, indicates no depth
     @property
@@ -32,7 +32,9 @@ class SupervisedKeypointDBEntry:
     # The information related to keypoint
     # All of these element should be in size of (3, n_keypoint)
     # The first element iterate over x, y, or z, the second element iterate over keypoints
-    keypoint_camera = None  # The position of keypoint expressed in camera frame using meter as unit
+    keypoint_camera = (
+        None  # The position of keypoint expressed in camera frame using meter as unit
+    )
 
     # (pixel_x, pixel_y, mm_depth) for each keypoint
     # Note that the pixel might be outside the image space
@@ -58,7 +60,11 @@ def sanity_check_spartan(entry: SupervisedKeypointDBEntry) -> bool:
     if len(entry.rgb_image_path) >= 1 and (not os.path.exists(entry.binary_mask_path)):
         return False
 
-    if entry.keypoint_validity_weight is None or entry.keypoint_pixelxy_depth is None or entry.keypoint_camera is None:
+    if (
+        entry.keypoint_validity_weight is None
+        or entry.keypoint_pixelxy_depth is None
+        or entry.keypoint_camera is None
+    ):
         return False
 
     if entry.bbox_bottom_right.x is None or entry.bbox_bottom_right.y is None:
@@ -81,6 +87,7 @@ class SupervisedImageKeypointDatabase(object):
     implementation, such as the spartan and the synthetic, which might
     contains different meta info, file structure, etc.
     """
+
     def __init__(self):
         pass
 

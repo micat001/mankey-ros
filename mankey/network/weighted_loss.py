@@ -2,10 +2,11 @@ import torch
 
 
 def weighted_mse_loss(
-        pred: torch.Tensor,
-        target: torch.Tensor,
-        weight: torch.Tensor,
-        size_avg: bool = True) -> torch.Tensor:
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    weight: torch.Tensor,
+    size_avg: bool = True,
+) -> torch.Tensor:
     """
     Compute the weight mes loss given torch tensor
     :param pred: (batch_size, -1)
@@ -23,10 +24,11 @@ def weighted_mse_loss(
 
 
 def weighted_l1_loss(
-        pred: torch.Tensor,
-        target: torch.Tensor,
-        weight: torch.Tensor,
-        size_avg: bool = True) -> torch.Tensor:
+    pred: torch.Tensor,
+    target: torch.Tensor,
+    weight: torch.Tensor,
+    size_avg: bool = True,
+) -> torch.Tensor:
     """
     Compute the weight l1 loss given torch tensor
     :param pred: (batch_size, -1)
